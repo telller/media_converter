@@ -12,20 +12,8 @@ export class RmqClientService implements OnApplicationBootstrap {
         await this.mediaClient.connect();
     }
 
-    public updateRAWMediaFile(
-        originalMediaId: string,
-        fileName: string,
-        fileSize: number,
-        s3url: string,
-        s3key: string,
-    ) {
-        this.emit(RmqEvent.updateOriginalMedia, {
-            originalMediaId,
-            fileName,
-            fileSize,
-            s3url,
-            s3key,
-        });
+    public createConvertTask(s3key: string) {
+        this.emit(RmqEvent.convertImage, { s3key });
     }
 
     private emit(event: RmqEvent, data: any) {

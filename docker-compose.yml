@@ -12,6 +12,8 @@ services:
       NODE_ENV: dev
     volumes:
       - ./:/src/dev
+    networks:
+      - converter_network
 
   rabbitmq:
     container_name: rabbitmq
@@ -30,6 +32,8 @@ services:
       interval: 5s
       timeout: 15s
       retries: 3
+    networks:
+      - converter_network
 
   minio:
     container_name: minio
@@ -43,3 +47,9 @@ services:
     volumes:
       - ~/projects/data:/data
     command: server /data --console-address ":9001"
+    networks:
+      - converter_network
+
+networks:
+  converter_network:
+    driver: bridge

@@ -14,8 +14,9 @@ export const config = {
         converterQueue: process.env.RMQ_CONVERTER_QUEUE,
     },
     minio: {
-        region: process.env.MINIO_REGION,
-        bucket: process.env.MEDIA_BUCKET,
+        host: process.env.MINIO_HOST,
+        port: Number(process.env.MINIO_PORT),
+        bucket: process.env.MINIO_BUCKET,
         accessKey: process.env.MINIO_ACCESS_KEY,
         secretKey: process.env.MINIO_SECRET_KEY,
     },
