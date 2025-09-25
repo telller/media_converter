@@ -1,20 +1,13 @@
 import * as Minio from 'minio';
 import { Injectable, Logger } from '@nestjs/common';
 import { Readable } from 'stream';
-import {
-    createReadStream,
-    createWriteStream,
-    existsSync,
-    mkdirSync,
-    rm,
-    readFile,
-    writeFile,
-} from 'fs';
+import { createWriteStream, existsSync, mkdirSync, readFile, writeFile, copyFileSync } from 'fs';
 import { ConfigService } from '@nestjs/config';
 import { DirectoryPath } from '@src/utils/directoryPath';
 import convert from 'heic-convert';
 import { promisify } from 'util';
 import { BucketItem } from 'minio';
+import { dropRight, join, last, split } from 'lodash';
 import { RmqClientService } from '../rmqClient/rmq.client.service';
 
 @Injectable()
@@ -38,58 +31,65 @@ export class ConverterService {
         });
     }
 
-    // async convert(
-    //     originalMediaId: string,
-    //     userId: string,
-    //     s3Url: string,
-    //     s3key: string,
-    // ): Promise<boolean> {
-    //     const fileName = s3key.substring(s3key.lastIndexOf('/') + 1);
-    //     const rawFilePath = `${DirectoryPath.raw}/${fileName}`;
-    //
-    //     const compressedFileName = `compressed_${fileName}`;
-    //     const compressedRawFilePath = `${DirectoryPath.raw}/${compressedFileName}`;
-    //
-    //     try {
-    //         await this.downloadFromS3(s3key, rawFilePath);
-    //
-    //         // generate stream
-    //         await this.performConverting(rawFilePath);
-    //
-    //         // compress original file
-    //         await this.uploadRawToS3(compressedFileName);
-    //
-    //         // update original file db record
-    //         this.updateRAWMediaFile(
-    //             originalMediaId,
-    //             compressedFileName,
-    //             `${DirectoryPath.raw_s3}/${compressedFileName}`,
-    //         );
-    //
-    //         return true;
-    //     } catch (error) {
-    //         return false;
-    //     } finally {
-    //         this.cleanup(rawFilePath);
-    //         this.cleanup(compressedRawFilePath);
-    //     }
-    // }
+    async getFilesListFromMinio() {
+        this.logger.log(`getImagesListFromMinio: started`);
 
-    // async performConverting(rawFilePath: string): Promise<void> {
-    //     this.createTmpFolder(DirectoryPath.stream);
-    //
-    //     this.logger.log(`Start perform converting for ${rawFilePath} ...`);
-    //
-    //     try {
-    //         console.log('asdasd');
-    //     } catch (error) {
-    //         this.logger.error(`Converting error for ${rawFilePath} :::`, error);
-    //         throw error;
-    //     }
-    // }
+        const stream = this.minioClient.listObjectsV2(this.minioConfig.bucket, undefined, true);
+        stream.on('data', (obj: BucketItem) => {
+            this.logger.log('getImagesListFromMinio: in progress');
+            if (obj && obj.name && obj.name.toLowerCase().includes('.heic')) {
+                this.rmqService.createConvertTask(obj.name);
+            }
+        });
+        stream.on('end', () => {
+            this.logger.log('getImagesListFromMinio: finished');
+        });
+        stream.on('error', (error) => {
+            this.logger.error(`getImagesListFromMinio: error:`, error);
+        });
+    }
+
+    async processFile(s3Key: string) {
+        try {
+            const originalFileName = last(split(s3Key, '/')) || '';
+            const originalFilePath = `${DirectoryPath.original}/${originalFileName}`;
+            await this.downloadFromS3(s3Key, originalFilePath);
+
+            if (originalFilePath.toLowerCase().includes('.heic')) {
+                const newFileName = originalFileName.replace('.HEIC', '.jpg');
+                const convertedFilePath = `${DirectoryPath.converted}/${newFileName}`;
+                const inputBuffer = await promisify(readFile)(originalFilePath);
+                const outputBuffer = await convert({
+                    buffer: inputBuffer,
+                    format: 'JPEG',
+                    quality: 1,
+                });
+                await promisify(writeFile)(
+                    convertedFilePath,
+                    // @ts-ignore
+                    outputBuffer,
+                );
+            } else {
+                const convertedFilePath = `${DirectoryPath.converted}/${originalFileName}`;
+                this.copyFile(originalFilePath, convertedFilePath);
+            }
+
+            await this.deleteFileFromS3(s3Key);
+
+            // TODO: remove this
+            await new Promise<void>((resolve) => {
+                setTimeout(() => resolve(), 1000);
+            });
+
+            return true;
+        } catch (error) {
+            this.logger.error(`Error occurred during image conversion: s3Key=${s3Key}:`, error);
+            return false;
+        }
+    }
 
     async downloadFromS3(key: string, rawFilePath: string) {
-        this.createTmpFolder(DirectoryPath.raw);
+        this.createFolder(this.getFoldersPathFromFilePath(rawFilePath));
 
         this.logger.log(`Downloading from minio: ${key}`);
 
@@ -108,52 +108,11 @@ export class ConverterService {
         }
     }
 
-    async uploadRawToS3(fileName: string) {
-        this.logger.log(`uploadRawToS3: Uploading to minio ...`);
-
-        try {
-            const rawFilePath = `${DirectoryPath.png}/${fileName}`;
-            const key = `minio/${fileName}`;
-
-            await this.minioClient
-                .putObject(this.minioConfig.bucket, key, createReadStream(rawFilePath))
-                .then(async () => {
-                    this.logger.log(`Uploaded: ${key}`);
-                });
-
-            this.logger.log(`Raw file successfully uploaded to minio`);
-        } catch (error) {
-            this.logger.error(`Error uploading raw to minio:`, error);
-            throw error;
-        }
+    getFoldersPathFromFilePath(s3UrlKey: string): string {
+        return join(dropRight(split(s3UrlKey, '/')), '/');
     }
 
-    async deleteRawS3Image(s3Key: string) {
-        this.logger.log(`deleteRawS3Image: deleting raw image ...`);
-
-        try {
-            await this.minioClient.removeObject(this.minioConfig.bucket, s3Key).then(async () => {
-                this.logger.log(`Removed: ${s3Key}`);
-            });
-
-            this.logger.log(`Raw file successfully deleted from minio`);
-        } catch (error) {
-            this.logger.error(`Error deleting raw from minio:`, error);
-            throw error;
-        }
-    }
-
-    private cleanup(path: string) {
-        rm(path, { recursive: true }, (error) => {
-            if (error) {
-                this.logger.error(`Error deleting: ${path}`);
-            } else {
-                this.logger.log(`Deleted: ${path}`);
-            }
-        });
-    }
-
-    createTmpFolder(path: string) {
+    createFolder(path: string) {
         this.logger.log(`Creating folder [${path}]`);
 
         try {
@@ -169,59 +128,30 @@ export class ConverterService {
         }
     }
 
-    async getImagesListFromMinio() {
-        this.logger.log(`Get images list from minio`);
-
-        const stream = this.minioClient.listObjectsV2(this.minioConfig.bucket, undefined, true);
-        stream.on('data', (obj: BucketItem) => {
-            if (obj && obj.name && obj.name.toLowerCase().includes('.heic')) {
-                this.rmqService.createConvertTask(obj.name);
-            }
-        });
-        stream.on('end', () => {
-            console.log('finished');
-        });
-        stream.on('error', (error) => {
-            this.logger.error(`Error downloading images list from minio:`, error);
-        });
+    copyFile(fromFilePath: string, toFilePath: string) {
+        try {
+            copyFileSync(fromFilePath, toFilePath);
+            this.logger.log(
+                `copyFile: successfully copied file from ${fromFilePath} to ${toFilePath}`,
+            );
+        } catch (error) {
+            this.logger.error(`copyFile: error`, error);
+            throw error;
+        }
     }
 
-    async convertImage(s3Key: string) {
+    async deleteFileFromS3(s3Key: string) {
+        this.logger.log(`deleteRawS3Image: deleting raw image ...`);
+
         try {
-            this.createTmpFolder(DirectoryPath.raw);
-            this.createTmpFolder(DirectoryPath.png);
-
-            const originalFileName = s3Key.substring(s3Key.lastIndexOf('/') + 1);
-            const newFileName = originalFileName.replace('.HEIC', '.png');
-            const rawFilePath = `${DirectoryPath.raw}/${originalFileName}`;
-            await this.downloadFromS3(s3Key, rawFilePath);
-
-            const inputBuffer = await promisify(readFile)(rawFilePath);
-            // eslint-disable-next-line no-await-in-loop
-            const outputBuffer = await convert({
-                buffer: inputBuffer, // the HEIC file buffer
-                format: 'PNG', // output format
-            });
-            await promisify(writeFile)(
-                `${DirectoryPath.png}/${newFileName}`,
-                // @ts-ignore
-                outputBuffer,
-            );
-
-            await this.uploadRawToS3(newFileName);
-            await this.deleteRawS3Image(s3Key);
-
-            this.cleanup(DirectoryPath.raw);
-            this.cleanup(DirectoryPath.png);
-
-            await new Promise<void>((resolve) => {
-                setTimeout(() => resolve(), 1000);
+            await this.minioClient.removeObject(this.minioConfig.bucket, s3Key).then(async () => {
+                this.logger.log(`Removed: ${s3Key}`);
             });
 
-            return true;
+            this.logger.log(`Raw file successfully deleted from minio`);
         } catch (error) {
-            this.logger.error(`Error occurred during image conversion: s3Key=${s3Key}:`, error);
-            return false;
+            this.logger.error(`Error deleting raw from minio:`, error);
+            throw error;
         }
     }
 }

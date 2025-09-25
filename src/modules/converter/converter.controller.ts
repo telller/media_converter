@@ -1,8 +1,6 @@
 import { Controller, Logger, Post } from '@nestjs/common';
-// import { Ctx, Payload, RmqContext } from '@nestjs/microservices';
-// import { Cron, CronExpression } from '@nestjs/schedule';
-// import { RmqEvent } from '../rmqClient/RmqEvent';
-import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { RmqContext, Ctx, EventPattern, Payload } from '@nestjs/microservices';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { RmqEvent } from '@src/modules/rmqClient/RmqEvent';
 import { ConverterService } from './converter.service';
 
@@ -17,7 +15,7 @@ export class ConverterController {
         this.logger.log(`Handle ${RmqEvent.convertImage} event with data:`, data);
 
         const dataObj = JSON.parse(data);
-        const isSuccess = await this.converterService.convertImage(dataObj.s3key);
+        const isSuccess = await this.converterService.processFile(dataObj.s3key);
 
         if (isSuccess) {
             this.logger.log('Event successfully processed');
@@ -28,14 +26,14 @@ export class ConverterController {
         context.getChannelRef().ack(context.getMessage());
     }
 
-    // @Cron(CronExpression.EVERY_10_SECONDS)
-    // async pullImagesToConvert() {
-    //     await this.converterService.getImagesListFromMinio();
-    // }
+    @Cron(CronExpression.EVERY_10_MINUTES)
+    async pullImagesToConvert() {
+        await this.converterService.getFilesListFromMinio();
+    }
 
     @Post('/start-convert')
     async getCoursesList() {
-        await this.converterService.getImagesListFromMinio();
+        await this.converterService.getFilesListFromMinio();
         return { success: true };
     }
 }
