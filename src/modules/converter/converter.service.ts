@@ -32,6 +32,10 @@ export class ConverterService {
     }
 
     async getFilesListFromMinio() {
+        if (!(await this.rmqService.isQueueEmpty())) {
+            this.logger.log(`getImagesListFromMinio: queue in not empty; skipping`);
+            return;
+        }
         this.logger.log(`getImagesListFromMinio: started`);
 
         const stream = this.minioClient.listObjectsV2(this.minioConfig.bucket, undefined, true);
