@@ -1,13 +1,19 @@
 import * as Minio from 'minio';
 import { Injectable, Logger } from '@nestjs/common';
 import { Readable } from 'stream';
-import { createWriteStream, existsSync, mkdirSync, readFile, writeFile, copyFileSync } from 'fs';
+import {
+    createWriteStream,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    writeFileSync,
+    copyFileSync,
+} from 'fs';
 import { ConfigService } from '@nestjs/config';
 import { DirectoryPath } from '@src/utils/directoryPath';
 import convert from 'heic-convert';
-import { promisify } from 'util';
 import { BucketItem } from 'minio';
-import { dropRight, join, last, split } from 'lodash';
+import { dropRight, join, split } from 'lodash';
 import { RabbitMonitorService } from '@src/modules/rmqClient/rmq.monitoring.service';
 import { RmqClientService } from '@src/modules/rmqClient/rmq.client.service';
 
@@ -58,26 +64,23 @@ export class ConverterService {
 
     async processFile(s3Key: string) {
         try {
-            const originalFileName = last(split(s3Key, '/')) || '';
-            const originalFilePath = `${DirectoryPath.original}/${originalFileName}`;
+            const originalFilePath = `${DirectoryPath.original}/${s3Key}`;
             await this.downloadFromS3(s3Key, originalFilePath);
 
             if (originalFilePath.toLowerCase().includes('.heic')) {
-                const newFileName = originalFileName.replace('.HEIC', '.jpg');
+                const newFileName = s3Key.replace('.HEIC', '.jpg');
                 const convertedFilePath = `${DirectoryPath.converted}/${newFileName}`;
-                const inputBuffer = await promisify(readFile)(originalFilePath);
+                this.createFolder(this.getFoldersPathFromFilePath(convertedFilePath));
+                const inputBuffer = readFileSync(originalFilePath);
                 const outputBuffer = await convert({
                     buffer: inputBuffer,
                     format: 'JPEG',
                     quality: 1,
                 });
-                await promisify(writeFile)(
-                    convertedFilePath,
-                    // @ts-ignore
-                    outputBuffer,
-                );
+                writeFileSync(convertedFilePath, Buffer.from(outputBuffer));
             } else {
-                const convertedFilePath = `${DirectoryPath.converted}/${originalFileName}`;
+                const convertedFilePath = `${DirectoryPath.converted}/${s3Key}`;
+                this.createFolder(this.getFoldersPathFromFilePath(convertedFilePath));
                 this.copyFile(originalFilePath, convertedFilePath);
             }
 
@@ -90,20 +93,20 @@ export class ConverterService {
         }
     }
 
-    async downloadFromS3(key: string, rawFilePath: string) {
-        this.createFolder(this.getFoldersPathFromFilePath(rawFilePath));
+    async downloadFromS3(key: string, originalFilePath: string) {
+        this.createFolder(this.getFoldersPathFromFilePath(originalFilePath));
 
         this.logger.log(`Downloading from minio: ${key}`);
 
         try {
             const s3item = await this.minioClient.getObject(this.minioConfig.bucket, key);
-            const pipe = (s3item as Readable).pipe(createWriteStream(rawFilePath));
+            const pipe = (s3item as Readable).pipe(createWriteStream(originalFilePath));
             await new Promise<void>((resolve, reject) => {
                 pipe.on('finish', resolve);
                 pipe.on('error', reject);
             });
 
-            this.logger.log(`Downloaded: ${rawFilePath}`);
+            this.logger.log(`Downloaded: ${originalFilePath}`);
         } catch (error) {
             this.logger.error(`Error downloading from minio:`, error);
             throw error;
