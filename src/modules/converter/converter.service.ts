@@ -8,7 +8,8 @@ import convert from 'heic-convert';
 import { promisify } from 'util';
 import { BucketItem } from 'minio';
 import { dropRight, join, last, split } from 'lodash';
-import { RmqClientService } from '../rmqClient/rmq.client.service';
+import { RabbitMonitorService } from '@src/modules/rmqClient/rmq.monitoring.service';
+import { RmqClientService } from '@src/modules/rmqClient/rmq.client.service';
 
 @Injectable()
 export class ConverterService {
@@ -19,6 +20,7 @@ export class ConverterService {
     private minioConfig = this.configService.getOrThrow('minio');
 
     constructor(
+        private readonly rabbitMonitorService: RabbitMonitorService,
         private readonly rmqService: RmqClientService,
         private readonly configService: ConfigService,
     ) {
@@ -32,7 +34,7 @@ export class ConverterService {
     }
 
     async getFilesListFromMinio() {
-        if (!(await this.rmqService.isQueueEmpty())) {
+        if (!(await this.rabbitMonitorService.isQueueEmpty())) {
             this.logger.log(`getImagesListFromMinio: queue in not empty; skipping`);
             return;
         }
@@ -80,11 +82,6 @@ export class ConverterService {
             }
 
             await this.deleteFileFromS3(s3Key);
-
-            // TODO: remove this
-            await new Promise<void>((resolve) => {
-                setTimeout(() => resolve(), 1000);
-            });
 
             return true;
         } catch (error) {

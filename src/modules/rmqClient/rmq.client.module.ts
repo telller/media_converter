@@ -2,7 +2,8 @@ import { Logger, Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RmqConfig } from '@src/config/interfaces/config.interface';
-import { RmqClientService } from './rmq.client.service';
+import { RabbitMonitorService } from '@src/modules/rmqClient/rmq.monitoring.service';
+import { RmqClientService } from '@src/modules/rmqClient/rmq.client.service';
 
 @Module({
     imports: [
@@ -29,8 +30,7 @@ import { RmqClientService } from './rmq.client.service';
             },
         ]),
     ],
-    controllers: [],
-    providers: [RmqClientService, Logger],
-    exports: [RmqClientService],
+    providers: [RabbitMonitorService, RmqClientService, Logger],
+    exports: [RabbitMonitorService, RmqClientService],
 })
 export class RmqClientModule {}
