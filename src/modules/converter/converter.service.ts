@@ -36,10 +36,11 @@ export class ConverterService {
 
         const stream = this.minioClient.listObjectsV2(this.minioConfig.bucket, undefined, true);
         stream.on('data', (obj: BucketItem) => {
-            this.logger.log('getImagesListFromMinio: in progress');
-            if (obj && obj.name && obj.name.toLowerCase().includes('.heic')) {
+            if (obj && obj.name) {
+                this.logger.log('getImagesListFromMinio: in progress');
                 this.rmqService.createConvertTask(obj.name);
             }
+            this.logger.log('getImagesListFromMinio: unknown file; skipping');
         });
         stream.on('end', () => {
             this.logger.log('getImagesListFromMinio: finished');
