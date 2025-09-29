@@ -12,8 +12,8 @@ services:
       NODE_ENV: dev
     volumes:
       - ./:/src/dev
-      - ~/media/converter/original:/original
-      - ~/media/converter/converted:/converted
+      - /home/teller/media/converter/original:/original
+      - /home/teller/media/converter/converted:/converted
     networks:
       - converter_network
 
@@ -47,7 +47,7 @@ services:
       MINIO_ROOT_USER: 'accessKey'
       MINIO_ROOT_PASSWORD: 'secretKey'
     volumes:
-      - ~/media/converter/minio:/data
+      - /home/teller/media/converter/minio:/data
     command: server /data --console-address ":9001"
     networks:
       - converter_network
