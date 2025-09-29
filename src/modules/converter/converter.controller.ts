@@ -26,7 +26,7 @@ export class ConverterController {
         context.getChannelRef().ack(context.getMessage());
     }
 
-    @Cron(CronExpression.EVERY_MINUTE)
+    @Cron(CronExpression.EVERY_HOUR)
     async pullImagesToConvert() {
         await this.converterService.getFilesListFromMinio();
     }
