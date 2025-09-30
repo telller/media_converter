@@ -11,7 +11,7 @@ services:
     environment:
       NODE_ENV: dev
     volumes:
-      - ./src:/src/dev/src
+      - ./:/src/dev
       - /home/teller/media/converter/original:/original
       - /home/teller/media/converter/converted:/converted
     networks:
