@@ -12,6 +12,8 @@ RUN npm install
 
 COPY . .
 
+RUN rm -rf /src/dev/dist
+
 USER node
 
 WORKDIR /src/dev
