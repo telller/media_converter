@@ -1,6 +1,6 @@
 ## Description
 
-Simple image converter microservice based on NestJS, RabbitMQ.
+Simple image converter microservice based on NestJS, RabbitMQ .
 
 ## Installation
 
