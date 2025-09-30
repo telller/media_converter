@@ -8,6 +8,7 @@ import {
     readFileSync,
     writeFileSync,
     copyFileSync,
+    statSync,
     chmodSync,
     chownSync,
 } from 'fs';
@@ -15,9 +16,10 @@ import { ConfigService } from '@nestjs/config';
 import { DirectoryPath } from '@src/utils/directoryPath';
 import convert from 'heic-convert';
 import { BucketItem } from 'minio';
-import { dropRight, join, split } from 'lodash';
+import { dropRight, join, reduce, split } from 'lodash';
 import { RabbitMonitorService } from '@src/modules/rmqClient/rmq.monitoring.service';
 import { RmqClientService } from '@src/modules/rmqClient/rmq.client.service';
+import path from 'path';
 
 @Injectable()
 export class ConverterService {
@@ -80,8 +82,7 @@ export class ConverterService {
                     quality: 1,
                 });
                 writeFileSync(convertedFilePath, Buffer.from(outputBuffer));
-                chownSync(convertedFilePath, 1000, 1000);
-                chmodSync(convertedFilePath, 0o755);
+                this.setPermissions(convertedFilePath);
             } else {
                 const convertedFilePath = `${DirectoryPath.converted}/${s3Key}`;
                 this.createFolder(this.getFoldersPathFromFilePath(convertedFilePath));
@@ -110,8 +111,7 @@ export class ConverterService {
                 pipe.on('error', reject);
             });
 
-            chownSync(originalFilePath, 1000, 1000);
-            chmodSync(originalFilePath, 0o755);
+            this.setPermissions(originalFilePath);
             this.logger.log(`Downloaded: ${originalFilePath}`);
         } catch (error) {
             this.logger.error(`Error downloading from minio:`, error);
@@ -123,20 +123,19 @@ export class ConverterService {
         return join(dropRight(split(s3UrlKey, '/')), '/');
     }
 
-    createFolder(path: string) {
-        this.logger.log(`Creating folder [${path}]`);
+    createFolder(folderPath: string) {
+        this.logger.log(`Creating folder [${folderPath}]`);
 
         try {
-            if (!existsSync(path)) {
-                mkdirSync(path, { recursive: true });
-                chownSync(path, 1000, 1000);
-                chmodSync(path, 0o755);
-                this.logger.log(`Folder [${path}] successfully created`);
+            if (!existsSync(folderPath)) {
+                mkdirSync(folderPath, { recursive: true });
+                this.setPermissions(folderPath);
+                this.logger.log(`Folder [${folderPath}] successfully created`);
             } else {
-                this.logger.log(`Folder [${path}] already exist`);
+                this.logger.log(`Folder [${folderPath}] already exist`);
             }
         } catch (error) {
-            this.logger.error(`Can't create folder [${path}]`, error);
+            this.logger.error(`Can't create folder [${folderPath}]`, error);
             throw error;
         }
     }
@@ -144,13 +143,38 @@ export class ConverterService {
     copyFile(fromFilePath: string, toFilePath: string) {
         try {
             copyFileSync(fromFilePath, toFilePath);
-            chownSync(toFilePath, 1000, 1000);
-            chmodSync(toFilePath, 0o755);
+            this.setPermissions(toFilePath);
             this.logger.log(
                 `copyFile: successfully copied file from ${fromFilePath} to ${toFilePath}`,
             );
         } catch (error) {
             this.logger.error(`copyFile: error`, error);
+            throw error;
+        }
+    }
+
+    setPermissions(fullPath: string) {
+        const uid = 1000;
+        const gid = 1000;
+        const dirMode = 0o755;
+        const fileMode = 0o644;
+        try {
+            const rawSegments = fullPath.split('/').filter(Boolean);
+            const segments = fullPath.startsWith('/') ? ['/', ...rawSegments] : rawSegments;
+            reduce(
+                segments,
+                (accPath, segment, index) => {
+                    const currentPath = index === 0 ? segment : path.join(accPath, segment);
+                    const mode = statSync(currentPath).isDirectory() ? dirMode : fileMode;
+                    chownSync(currentPath, uid, gid);
+                    chmodSync(currentPath, mode);
+                    return currentPath;
+                },
+                '',
+            );
+            this.logger.log(`setPermissions: successfully set permissions for ${path}`);
+        } catch (error) {
+            this.logger.error(`setPermissions: error`, error);
             throw error;
         }
     }
