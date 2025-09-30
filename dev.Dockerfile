@@ -8,8 +8,14 @@ WORKDIR /src
 
 COPY package*.json ./
 
-CMD [ "npm", "install" ]
+RUN npm install
+
+COPY . .
+
+RUN useradd -u 1000 -m teller && chown -R teller:teller /src
+
+USER 1000:1000
 
 WORKDIR /src/dev
 
-CMD [ "npm", "run", "start:dev" ]
+CMD ["npm", "run", "start:dev"]
