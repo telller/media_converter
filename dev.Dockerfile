@@ -12,9 +12,7 @@ RUN npm install
 
 COPY . .
 
-RUN adduser -D -u 1000 -h /home/teller -s /bin/sh teller && chown -R teller:teller /src
-
-USER 1000:1000
+USER node
 
 WORKDIR /src/dev
 
