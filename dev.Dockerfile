@@ -12,9 +12,11 @@ RUN npm install
 
 COPY . .
 
-RUN rm -rf /src/dev/dist
+# Створюємо dist і даємо права teller
+RUN mkdir -p /src/dev/dist && chown -R 1000:1000 /src/dev/dist
 
-USER node
+# Перемикаємось на користувача teller
+USER 1000:1000
 
 WORKDIR /src/dev
 
