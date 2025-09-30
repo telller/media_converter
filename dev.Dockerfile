@@ -2,7 +2,7 @@
 # DEV BUILD
 ###################
 
-FROM node:21-bullseye
+FROM node:21-bullseye as dev
 
 # Робоча директорія всередині контейнера
 WORKDIR /src/dev
