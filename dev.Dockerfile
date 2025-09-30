@@ -12,7 +12,7 @@ RUN npm install
 
 COPY . .
 
-RUN useradd -u 1000 -m teller && chown -R teller:teller /src
+RUN adduser -D -u 1000 -h /home/teller -s /bin/sh teller && chown -R teller:teller /src
 
 USER 1000:1000
 
