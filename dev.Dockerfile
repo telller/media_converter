@@ -1,32 +1,21 @@
 ###################
-# DEV BUILD
+# DEV BUILD (Alpine)
 ###################
 
-FROM node:21-bullseye as dev
+FROM node:21-alpine AS dev
 
-# Робоча директорія всередині контейнера
 WORKDIR /src/dev
 
-# Копіюємо лише package.json для npm install
 COPY package*.json ./
 
-# Встановлюємо залежності під root (щоб не було проблем з правами)
 RUN npm install
 
-# Копіюємо весь код
 COPY . .
 
-# Створюємо папку dist всередині контейнера і даємо права teller
-RUN mkdir -p /src/dev/dist \
-    && groupadd -g 1000 teller \
-    && useradd -u 1000 -g 1000 -m teller \
-    && chown -R teller:teller /src/dev/dist
+RUN mkdir -p /src/dev/dist && chown -R node:node /src/dev/dist
 
-# Перемикаємось на користувача teller
-USER 1000:1000
+USER node
 
-# Робоча директорія для запуску
 WORKDIR /src/dev
 
-# Команда для запуску NestJS у watch-mode
 CMD ["npm", "run", "start:dev"]
