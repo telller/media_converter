@@ -8,6 +8,8 @@ import {
     readFileSync,
     writeFileSync,
     copyFileSync,
+    chmodSync,
+    chownSync,
 } from 'fs';
 import { ConfigService } from '@nestjs/config';
 import { DirectoryPath } from '@src/utils/directoryPath';
@@ -78,6 +80,8 @@ export class ConverterService {
                     quality: 1,
                 });
                 writeFileSync(convertedFilePath, Buffer.from(outputBuffer));
+                chownSync(convertedFilePath, 1000, 1000);
+                chmodSync(convertedFilePath, 0o755);
             } else {
                 const convertedFilePath = `${DirectoryPath.converted}/${s3Key}`;
                 this.createFolder(this.getFoldersPathFromFilePath(convertedFilePath));
@@ -106,6 +110,8 @@ export class ConverterService {
                 pipe.on('error', reject);
             });
 
+            chownSync(originalFilePath, 1000, 1000);
+            chmodSync(originalFilePath, 0o755);
             this.logger.log(`Downloaded: ${originalFilePath}`);
         } catch (error) {
             this.logger.error(`Error downloading from minio:`, error);
@@ -123,6 +129,8 @@ export class ConverterService {
         try {
             if (!existsSync(path)) {
                 mkdirSync(path, { recursive: true });
+                chownSync(path, 1000, 1000);
+                chmodSync(path, 0o755);
                 this.logger.log(`Folder [${path}] successfully created`);
             } else {
                 this.logger.log(`Folder [${path}] already exist`);
@@ -136,6 +144,8 @@ export class ConverterService {
     copyFile(fromFilePath: string, toFilePath: string) {
         try {
             copyFileSync(fromFilePath, toFilePath);
+            chownSync(toFilePath, 1000, 1000);
+            chmodSync(toFilePath, 0o755);
             this.logger.log(
                 `copyFile: successfully copied file from ${fromFilePath} to ${toFilePath}`,
             );
