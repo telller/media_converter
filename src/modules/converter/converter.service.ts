@@ -172,7 +172,7 @@ export class ConverterService {
                 },
                 '',
             );
-            this.logger.log(`setPermissions: successfully set permissions for ${path}`);
+            this.logger.log(`setPermissions: successfully set permissions for ${fullPath}`);
         } catch (error) {
             this.logger.error(`setPermissions: error`, error);
             throw error;
