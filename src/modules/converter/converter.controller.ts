@@ -1,11 +1,9 @@
-import { Controller, Logger, Post } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConverterService } from './converter.service';
 
 @Controller()
 export class ConverterController {
-    private readonly logger = new Logger(ConverterController.name);
-
     constructor(private readonly converterService: ConverterService) {}
 
     @Cron(CronExpression.EVERY_HOUR)
