@@ -1,8 +1,8 @@
-import { readFileSync, writeFileSync, chmodSync, chownSync, unlinkSync } from 'fs';
 import { DirectoryPath } from '@src/utils/directoryPath';
 import { Injectable, Logger } from '@nestjs/common';
 import convert from 'heic-convert';
 import readdirp from 'readdirp';
+import fs from 'fs/promises';
 
 @Injectable()
 export class ConverterService {
@@ -30,16 +30,16 @@ export class ConverterService {
             const outputPath = inputPath.replace(/\.heic$/i, '.jpg');
 
             try {
-                const inputBuffer = readFileSync(inputPath);
+                const inputBuffer = await fs.readFile(inputPath);
                 const outputBuffer = await convert({
                     buffer: inputBuffer,
                     format: 'JPEG',
                     quality: 1,
                 });
-                writeFileSync(outputPath, Buffer.from(outputBuffer));
-                this.setPermissions(outputPath);
+                await fs.writeFile(outputPath, Buffer.from(outputBuffer));
+                await this.setPermissions(outputPath);
 
-                unlinkSync(inputPath);
+                await fs.unlink(inputPath);
                 this.logger.log(
                     `convertHeicToJpg: successfully converted ${inputPath} → ${outputPath}`,
                 );
@@ -51,10 +51,10 @@ export class ConverterService {
         this.converting = false;
     }
 
-    setPermissions(path: string) {
+    async setPermissions(path: string) {
         try {
-            chownSync(path, 1000, 1000);
-            chmodSync(path, 0o744);
+            await fs.chown(path, 1000, 1000);
+            await fs.chmod(path, 0o744);
             this.logger.log(`setPermissions: successfully set permissions for ${path}`);
         } catch (error) {
             this.logger.error(`setPermissions: error`, error);
