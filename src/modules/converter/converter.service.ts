@@ -21,6 +21,7 @@ export class ConverterService {
 
         const stream = readdirp(DirectoryPath.original, {
             fileFilter: ({ fullPath }) => fullPath.includes('.heic') || fullPath.includes('.HEIC'),
+            depth: Infinity,
         });
 
         // eslint-disable-next-line no-restricted-syntax
