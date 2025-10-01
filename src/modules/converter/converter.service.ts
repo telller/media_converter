@@ -48,7 +48,7 @@ export class ConverterService {
                 this.logger.error(`convertHeicToJpg: error during conversation ${inputPath}`, err);
             }
         }
-        this.logger.log(`convertHeicToJpg: started`);
+        this.logger.log(`convertHeicToJpg: finished`);
         this.converting = false;
     }
 
