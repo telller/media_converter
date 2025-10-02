@@ -5,7 +5,7 @@
 FROM node:21-slim AS dev
 
 RUN apt-get update
-RUN apt-get install -y libheif-examples libde265-0 libaom3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get install -y libheif-examples libde265-0 libaom3 findutils && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 

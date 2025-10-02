@@ -81,8 +81,8 @@ export class ConverterService {
         try {
             await execFileAsync(`find ${path} -type f -name '._*' -exec rm -f {} +`);
             this.logger.log(`removeAppleDoubleFiles: successfully deleted all "._*" files`);
-        } catch (err) {
-            this.logger.log(`removeAppleDoubleFiles: error`);
+        } catch (error) {
+            this.logger.log(`removeAppleDoubleFiles: error`, error);
         }
     }
 }
