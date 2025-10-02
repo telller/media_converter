@@ -2,10 +2,10 @@
 # BUILD FOR LOCAL DEV
 ###################
 
-FROM node:21-alpine AS dev
+FROM node:21-slim AS dev
 
-# Встановлюємо системні залежності для sharp + HEIC
-RUN apk add --no-cache vips-dev libheif libde265 aom-dev build-base python3
+RUN apt-get update
+RUN apt-get install -y libheif-examples libde265-0 libaom3 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 

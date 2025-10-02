@@ -1,8 +1,11 @@
 import { DirectoryPath } from '@src/utils/directoryPath';
 import { Injectable, Logger } from '@nestjs/common';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import readdirp from 'readdirp';
 import fs from 'fs/promises';
-import sharp from 'sharp';
+
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class ConverterService {
@@ -31,7 +34,7 @@ export class ConverterService {
             const outputPath = inputPath.replace(/\.heic$/i, '.jpg');
 
             try {
-                await sharp(inputPath).jpeg({ quality: 100 }).toFile(outputPath);
+                await execFileAsync('heif-convert', [inputPath, outputPath]);
                 await this.setPermissions(outputPath);
 
                 await fs.unlink(inputPath);
