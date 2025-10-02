@@ -30,7 +30,8 @@
     "heic-convert": "^2.1.0",
     "lodash": "^4.17.21",
     "readdirp": "^4.1.2",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "sharp": "^0.34.4"
   },
   "devDependencies": {
     "@japa/assert": "^1.2.4",
