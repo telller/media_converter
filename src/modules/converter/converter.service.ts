@@ -1,11 +1,12 @@
 import { DirectoryPath } from '@src/utils/directoryPath';
 import { Injectable, Logger } from '@nestjs/common';
-import { execFile } from 'child_process';
+import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
 import readdirp from 'readdirp';
 import fs from 'fs/promises';
 
 const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 
 @Injectable()
 export class ConverterService {
@@ -79,7 +80,7 @@ export class ConverterService {
 
     async removeAppleDoubleFiles(path: string) {
         try {
-            await execFileAsync(`find ${path} -type f -name '._*' -exec rm -f {} +`);
+            await execAsync(`find ${path} -type f -name '._*' -exec rm -f {} +`);
             this.logger.log(`removeAppleDoubleFiles: successfully deleted all "._*" files`);
         } catch (error) {
             this.logger.log(`removeAppleDoubleFiles: error`, error);
