@@ -36,8 +36,8 @@ export class ConverterService {
             try {
                 await execFileAsync('heif-convert', [inputPath, outputPath]);
                 await this.setPermissions(outputPath);
+                await this.cleanup(inputPath);
 
-                await fs.unlink(inputPath);
                 this.logger.log(
                     `convertHeicToJpg: successfully converted ${inputPath} → ${outputPath}`,
                 );
@@ -45,6 +45,7 @@ export class ConverterService {
                 this.logger.error(`convertHeicToJpg: error during conversation ${inputPath}`, err);
             }
         }
+        await this.removeAppleDoubleFiles(DirectoryPath.original);
         this.logger.log(`convertHeicToJpg: finished`);
         this.converting = false;
     }
@@ -57,6 +58,31 @@ export class ConverterService {
         } catch (error) {
             this.logger.error(`setPermissions: error`, error);
             throw error;
+        }
+    }
+
+    async cleanup(path: string) {
+        try {
+            await fs.unlink(path);
+            await fs
+                .unlink(path.replace(/\.heic$/i, '.mov'))
+                .catch((e) => e.code !== 'ENOENT' && Promise.reject(e));
+            await fs
+                .unlink(path.replace(/\.heic$/i, '.MOV'))
+                .catch((e) => e.code !== 'ENOENT' && Promise.reject(e));
+            this.logger.log(`cleanup: successfully deleted ${path} and .mov/.MOV`);
+        } catch (error) {
+            this.logger.error(`cleanup: error`, error);
+            throw error;
+        }
+    }
+
+    async removeAppleDoubleFiles(path: string) {
+        try {
+            await execFileAsync(`find ${path} -type f -name '._*' -exec rm -f {} +`);
+            this.logger.log(`removeAppleDoubleFiles: successfully deleted all "._*" files`);
+        } catch (err) {
+            this.logger.log(`removeAppleDoubleFiles: error`);
         }
     }
 }
