@@ -6,7 +6,7 @@ import { ConverterService } from './converter.service';
 export class ConverterController {
     constructor(private readonly converterService: ConverterService) {}
 
-    @Cron(CronExpression.EVERY_HOUR)
+    @Cron(CronExpression.EVERY_DAY_AT_NOON)
     async pullImagesToConvert() {
         await this.converterService.convertHeicToJpg();
     }

@@ -11,5 +11,5 @@ services:
       NODE_ENV: dev
     volumes:
       - ./:/src/dev
-#      - /home/teller/media/photos:/original
-      - ~/projects/media-converter/original:/original
+      - /home/teller/media/photos:/original
+#      - ~/projects/media-converter/original:/original
