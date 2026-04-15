@@ -39,11 +39,11 @@ export class RenameService {
         try {
             // eslint-disable-next-line no-restricted-syntax
             for await (const entry of stream) {
-                this.logger.log(`renameFile: in progress`);
                 const inputPath = entry.fullPath;
                 const dir = path.dirname(inputPath);
                 const baseName = path.basename(inputPath);
 
+                this.logger.log(`renameFile: in progress: ${inputPath}`);
                 try {
                     const timestamp =
                         (await this.getCaptureTimestamp(inputPath)) ||
