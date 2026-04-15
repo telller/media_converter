@@ -8,6 +8,9 @@ import { DirectoryPath } from '@src/utils/directoryPath';
 
 const execFileAsync = promisify(execFile);
 
+const TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/;
+const NO_TS_PREFIX = 'NO_TIMESTAMP';
+
 @Injectable()
 export class RenameService {
     private renaming = false;
@@ -25,8 +28,9 @@ export class RenameService {
 
         const stream = readdirp(DirectoryPath.original, {
             fileFilter: ({ basename }) => {
+                if (basename.startsWith(NO_TS_PREFIX)) return false;
                 if (basename.startsWith('.')) return false;
-                return !/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/.test(basename);
+                return !TIMESTAMP_REGEX.test(basename);
             },
             depth: Infinity,
         });
@@ -40,7 +44,9 @@ export class RenameService {
                 const baseName = path.basename(inputPath);
 
                 try {
-                    const timestamp = await this.getCaptureTimestamp(inputPath);
+                    const timestamp =
+                        (await this.getCaptureTimestamp(inputPath)) ||
+                        (await this.getFileSystemTimestamp(inputPath));
                     if (timestamp) {
                         const ext = path.extname(baseName);
                         const nameWithoutExt = path.basename(baseName, ext);
@@ -52,7 +58,15 @@ export class RenameService {
                             `renameFile: successfully renamed ${baseName} → ${newName}`,
                         );
                     } else {
-                        this.logger.warn(`renameFile: no timestamp, skipping: ${inputPath}`);
+                        const noTimestampPath = `${NO_TS_PREFIX}_${baseName}`;
+                        const outputPath = path.join(dir, noTimestampPath);
+
+                        await fs.rename(inputPath, outputPath);
+                        await this.setPermissions(outputPath);
+
+                        this.logger.warn(
+                            `renameFile: no timestamp → ${baseName} → ${noTimestampPath}`,
+                        );
                     }
                 } catch (err) {
                     this.logger.error(`renameFile: error: ${inputPath}`, err);
@@ -93,5 +107,24 @@ export class RenameService {
         if (!match) return null;
         const [, y, m, d, hh, mm, ss] = match;
         return `${y}-${m}-${d}_${hh}-${mm}-${ss}`;
+    }
+
+    private async getFileSystemTimestamp(filePath: string): Promise<string | null> {
+        try {
+            const stat = await fs.stat(filePath);
+            const date =
+                stat.birthtime && stat.birthtime.getTime() > 0 ? stat.birthtime : stat.mtime;
+            const pad = (n: number) => String(n).padStart(2, '0');
+            return (
+                `${date.getFullYear()}-` +
+                `${pad(date.getMonth() + 1)}-` +
+                `${pad(date.getDate())}_` +
+                `${pad(date.getHours())}-` +
+                `${pad(date.getMinutes())}-` +
+                `${pad(date.getSeconds())}`
+            );
+        } catch {
+            return null;
+        }
     }
 }
