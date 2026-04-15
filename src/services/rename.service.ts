@@ -28,7 +28,7 @@ export class RenameService {
 
         const stream = readdirp(DirectoryPath.original, {
             fileFilter: ({ basename }) => {
-                // if (basename.startsWith(NO_TS_PREFIX)) return false;
+                if (basename.startsWith(NO_TS_PREFIX)) return false;
                 if (basename.startsWith('.')) return false;
                 return !TIMESTAMP_REGEX.test(basename);
             },
