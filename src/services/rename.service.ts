@@ -24,7 +24,10 @@ export class RenameService {
         this.logger.log('renameFiles: started');
 
         const stream = readdirp(DirectoryPath.original, {
-            fileFilter: ({ basename }) => !/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/.test(basename),
+            fileFilter: ({ basename }) => {
+                if (basename.startsWith('.')) return false;
+                return !/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/.test(basename);
+            },
             depth: Infinity,
         });
 
