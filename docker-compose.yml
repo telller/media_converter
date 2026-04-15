@@ -11,5 +11,4 @@ services:
       NODE_ENV: dev
     volumes:
       - ./:/src/dev
-      - /home/teller/media/photos/DVR_DIGITAL:/original
-#      - /home/teller/media/photos:/original
+      - /home/teller/media/photos:/original
