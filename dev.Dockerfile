@@ -5,7 +5,7 @@
 FROM node:21-slim AS dev
 
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends curl gnupg ca-certificates lsb-release findutils
+RUN apt-get install -y --no-install-recommends curl gnupg ca-certificates lsb-release findutils exiftool
 RUN rm -rf /var/lib/apt/lists/*
 RUN echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/sources.list
 RUN apt-get update

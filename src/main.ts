@@ -17,7 +17,7 @@ async function bootstrap() {
 
     const config = new DocumentBuilder().setTitle('Image converter').setVersion('0.1').build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/documentation', app, document);
+    SwaggerModule.setup('api', app, document);
 
     const configService = app.get<ConfigService>(ConfigService);
 
