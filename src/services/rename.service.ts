@@ -27,8 +27,9 @@ export class RenameService {
         this.logger.log('renameFiles: started');
 
         const stream = readdirp(DirectoryPath.original, {
-            fileFilter: ({ basename }) => {
+            fileFilter: ({ basename, fullPath }) => {
                 if (basename.toLowerCase().endsWith('.aac')) return false;
+                if (fullPath.includes('VAZ_2105_DASH_CAM')) return false;
                 if (basename.startsWith(NO_TS_PREFIX)) return false;
                 if (basename.startsWith('.')) return false;
                 return !TIMESTAMP_REGEX.test(basename);
