@@ -27,9 +27,7 @@ export class RenameService {
         this.logger.log('renameFiles: started');
 
         const stream = readdirp(DirectoryPath.original, {
-            fileFilter: ({ basename, fullPath }) => {
-                if (basename.toLowerCase().endsWith('.aac')) return false;
-                if (fullPath.includes('VAZ_2105_DASH_CAM')) return false;
+            fileFilter: ({ basename }) => {
                 if (basename.startsWith(NO_TS_PREFIX)) return false;
                 if (basename.startsWith('.')) return false;
                 return !TIMESTAMP_REGEX.test(basename);
@@ -93,22 +91,26 @@ export class RenameService {
     }
 
     private async getCaptureTimestamp(filePath: string): Promise<string | null> {
-        const { stdout } = await execFileAsync('/usr/bin/exiftool', [
-            '-DateTimeOriginal',
-            '-MediaCreateDate',
-            '-CreateDate',
-            '-TrackCreateDate',
-            '-s3',
-            filePath,
-        ]);
-        const lines = stdout.toString().trim().split('\n').filter(Boolean);
-        if (!lines.length) return null;
-        const raw = lines[0];
-        if (!raw) return null;
-        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
-        if (!match) return null;
-        const [, y, m, d, hh, mm, ss] = match;
-        return `${y}-${m}-${d}_${hh}-${mm}-${ss}`;
+        try {
+            const { stdout } = await execFileAsync('/usr/bin/exiftool', [
+                '-DateTimeOriginal',
+                '-MediaCreateDate',
+                '-CreateDate',
+                '-TrackCreateDate',
+                '-s3',
+                filePath,
+            ]);
+            const lines = stdout.toString().trim().split('\n').filter(Boolean);
+            if (!lines.length) return null;
+            const raw = lines[0];
+            if (!raw) return null;
+            const match = raw.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+            if (!match) return null;
+            const [, y, m, d, hh, mm, ss] = match;
+            return `${y}-${m}-${d}_${hh}-${mm}-${ss}`;
+        } catch {
+            return null;
+        }
     }
 
     private async getFileSystemTimestamp(filePath: string): Promise<string | null> {
